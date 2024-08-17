@@ -1,69 +1,53 @@
-# This is a basic workflow to help you get started with Actions
-#
 name: CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
-      - name: configure AWS Credentials
-    uses: aws-actions/configure-aws-credentials@v1
-    with:
-      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      aws-region: ${{ vars.region }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.region }}
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
 
-  - name: install kubectl
-    uses: azure/setup-kubectl@v3
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name sockshop
+          kubectl config set-context --current --namespace=sock-shop
 
-  - name: install helm
-    uses: azure/setup-helm@v4.2.0
+      - name: Run Lucky files
+        run: kubectl apply -f lucky/.
 
+      - name: Update Helm Repositories
+        run: helm repo update
 
-  - name: update kubeconfig
-    run: |
-      aws eks update-kubeconfig --region us-east-1 --name sockshop
-      aws eks kubectl config set-context --current --namespace=sock-shop
+      - name: Install Helm Charts
+        run: |
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo add prometheus https://prometheus-community.github.io/helm-charts
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 
-  - name: run lucky files
-    run:  kubectl apply -f lucky/.
+          helm install certificate jetstack/cert-manager
+          helm install prometheus prometheus/kube-prometheus-stack
+          helm install ingress ingress-nginx/ingress-nginx
 
-
-  - name: update helm charts
-    run:  helm repo update
-
-
-  - name: install helm charts
-    run: |
-      helm install certificate jetstack/cert-manager
-      helm install prometheus prometheus/kube-prometheus-stack
-      helm install ingres ingress/ingress-nginx
-
-
-
-
-      # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
           echo Add other actions to build,
