@@ -1,41 +1,51 @@
-# Steps represent a sequence of tasks that will be executed as part of the job
-steps:
-  # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-  - uses: actions/checkout@v4
+name: CI
 
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
-  - name: configure AWS Credentials
-    uses: aws-actions/configure-aws-credentials@v1
-    with:
-      aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      aws-region: ${{ env.REGION }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-  - name: create s3 bucket
-    run: aws s3 mb s3://capstone-project-capstoneF-test-24-08-16
+    steps:
+      - uses: actions/checkout@v4
 
-  - name: install kubectl
-    uses: azure/setup-kubectl@v3
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.region }}
 
-  - name: install helm
-    uses: azure/setup-helm@v4.2.0
+      - name: Create S3 Bucket
+        run: aws s3 mb s3://capstone-project-capstoneF-test-24-08-16
 
-  - name: setup terraform
-    uses: hashicorp/setup-terraform@v2
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
 
-  - name: create eks cluster
-    uses: hashicorp/terraform@v2
-    run: |
-      terraform -chdir=terraform/ init
-      terraform -chdir=terraform apply --auto-approve
+      - name: Install Helm
+        uses: azure/setup-helm@v4.2.0
 
-  - name: update kubeconfig
-    run: |
-      aws eks update-kubeconfig --region us-east-1 --name sockshop
-      kubectl create namespace sock-shop
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
 
-  - name: add helm charts
-    run: |
-      helm repo add ingress-nginx   https://kubernetes.github.io/ingress-nginx
-      helm repo add prometheus      https://prometheus-community.github.io/helm-charts
-      helm repo add jetstack        https://charts.jetstack.io
+      - name: Create EKS Cluster with Terraform
+        run: |
+          terraform -chdir=terraform/ init
+          terraform -chdir=terraform apply --auto-approve
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name sockshop
+          kubectl create namespace sock-shop
+
+      - name: Add Helm Charts Repositories
+        run: |
+          helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+          helm repo add prometheus https://prometheus-community.github.io/helm-charts
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo update
