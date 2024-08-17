@@ -34,9 +34,12 @@ jobs:
 
       - name: list files for debugging
         run: ls -R
+      - name: list files for debugging
+        run: ls -R
 
       - name: apply kubernetes manifests
         run: kubectl apply -f lucky/.
+
 
 
       - name: Update Helm Repositories
