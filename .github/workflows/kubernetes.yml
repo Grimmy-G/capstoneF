@@ -32,8 +32,12 @@ jobs:
           aws eks update-kubeconfig --region us-east-1 --name sockshop
           kubectl config set-context --current --namespace=sock-shop
 
-      - name: Run Lucky files
+      - name: list files for debugging
+        run: ls -R
+
+      - name: apply kubernetes manifests
         run: kubectl apply -f lucky/.
+
 
       - name: Update Helm Repositories
         run: helm repo update
